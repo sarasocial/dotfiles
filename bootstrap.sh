@@ -127,18 +127,20 @@ print () {
             clean_text+="$sub"
         fi
     done
-    
-    if [[ "$display_type" == "centered" ]]; then
-        output="$(center_print "$formatted_text" ${#clean_text})"
-    else
-        output="$(margin_print "$formatted_text" ${#clean_text})"
-    fi
 
     if [[ $reading == false ]]; then
-        echo "$output"
+        text="$formatted_text"
     else
-        echo "$clean_text"
+        text="$clean_text"
     fi
+    
+    if [[ "$display_type" == "centered" ]]; then
+        output="$(center_print "$text" ${#clean_text})"
+    else
+        output="$(margin_print "$text" ${#clean_text})"
+    fi
+
+    echo "$output"
 }
 
 display_main_menu () {
@@ -175,7 +177,7 @@ display_main_menu () {
     print ""
     print "No other changes will be made."
     print ""
-    yn="$(print "Do you want to proceed? <m>[y/N]<w>: <@>")"
+    read -p "$(print "Do you want to proceed? <m>[y/N]<w>: <@>")" yn
 }
 
 display_main_menu
