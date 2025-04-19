@@ -415,8 +415,14 @@ if [[ $dependencies_required == true ]]; then
     print_error "Unable to install dependencies"
     prompt "<w>Rerun the bootstrap script? <m>[y/N]:<w> "
     case "$input" in
-        [yY][eE][sS]|[yY]) curl -L sarasoci.al/dots.sh | bash; exit;;
-        *) clear; exit;;
+        [yY][eE][sS]|[yY])
+            curl -L sarasoci.al/dots.sh | bash;
+            exit
+            ;;
+        *)
+            clear
+            exit
+            ;;
     esac
 fi
 
@@ -458,7 +464,7 @@ if [[ $repo_exists == false ]]; then
     esac
 fi
 
-bash ~/$TARGET_REPO_NAME/install.sh
+bash "~/$TARGET_REPO_NAME/install.sh"
 
 # Ask: continue?
 
