@@ -177,15 +177,15 @@ display_main_menu () {
     print ""
     print "No other changes will be made."
     print ""
-    read -p "$(print "Do you want to proceed? <m>[y/N]<w>: <@>")" yn
+    read -r -p "$(print "Do you want to proceed? <m>[y/N]<w>: <@>")" yn
 }
 
 display_main_menu
 while true; do
-    case $yn in
+    case "$yn" in
         [Yy]* ) break;;
         [Nn]* ) clear; exit;;
-        * ) display_main_menu;;
+        *) display_main_menu;;
     esac
 done
 
