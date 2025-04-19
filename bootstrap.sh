@@ -392,7 +392,7 @@ sleep 0.25
 
 if [[ $updates_required == true ]]; then
     print_action "Updating System..."
-    $PRIV_CMD pacman -Syu
+    $PRIV_CMD pacman -Syu &> /dev/tty
 fi
 check_for_updates
 if [[ $updates_required == true ]]; then
@@ -408,7 +408,7 @@ sleep 0.25
 
 if [[ $dependencies_required == true ]]; then
     print_action "Installing dependencies..."
-    $PRIV_CMD pacman -S "${DEPENDENCIES[@]}"
+    $PRIV_CMD pacman -S "${DEPENDENCIES[@]}" &> /dev/tty
 fi
 filter_installed DEPENDENCIES
 if [[ $dependencies_required == true ]]; then
