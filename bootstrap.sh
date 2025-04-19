@@ -137,8 +137,7 @@ print () {
     if [[ $reading == false ]]; then
         echo "$output"
     else
-        printf "$output"
-        read -p "" input
+        read -p "$clean_text" input
     fi
 }
 
