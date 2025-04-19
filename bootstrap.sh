@@ -26,6 +26,11 @@
 #              script; the user is not prompted.
 #!/bin/bash
 
+# [ TARGET REPO ]
+# the repo to be downloaded
+TARGET_REPO="https://github.com/sarasocial/dotfiles"
+TARGET_REPO_NAME="sarasocial-dotfiles" # the name that git clone sets
+
 # [ DEPENDENCIES ]
 # contains a list of packages to be installed with pacman.
 # updating this list changes which packages are installed.
@@ -51,9 +56,6 @@ filter_installed() {
 
   arr=("${filtered[@]}")  # overwrite original array with only missing
 }
-
-# run filter_installed () on dependencies
-filter_installed DEPENDENCIES
 
 # update_terminal_dimensions ()
     # literally just updates the terminal dimensions lol
@@ -192,7 +194,7 @@ print () {
     echo "$output"
 }
 
-announce_action () {
+print_action () {
     action=$1
     if [[ $h_margin -ge 2 ]]; then
         h_margin=$(( h_margin - 2 ))
@@ -209,13 +211,92 @@ announce_action () {
     fi
 }
 
+print_error () {
+    changed_margin=false
+    error_message=$1
+
+    if [[ $h_margin -ge 2 ]]; then
+        changed_margin=true
+        h_margin=$(( h_margin - 2 ))
+        update_terminal_dimensions
+    fi
+
+    print "<j><reset><b>"
+    print "<r>! [ ERROR ]<reset>"
+    for line in "$@"; do
+        print "<r>     | $line"
+    done
+    print "<w><reset>"
+
+    if [[ $changed_margin == true ]]; then
+        h_margin=$(( h_margin + 2 ))
+        update_terminal_dimensions
+    fi
+}
+
+throw_error () {
+    print_error "$@"
+    if [[ $h_margin -ge 2 ]]; then
+        h_margin=$(( h_margin - 2 ))
+        update_terminal_dimensions
+    fi
+    read -n 1 -s -r -p "$(print "<w>> Press any key to exit ")"
+    exit 1
+}
+
 # display_main_menu ()
     # pretty self-explanatory!
     # really just a bunch of print statements, takes a y/n
     # input at the end.
+
+run_step_checks () {
+    # set base variables
+    PRIV_CMD=""
+    updates_required=true
+    dependencies_required=true
+    repo_exists=false
+
+    # assert that user is root or has sudo/su installed
+    if command -v sudo &>/dev/null; then
+        PRIV_CMD="sudo"
+    elif command -v su &>/dev/null; then
+        PRIV_CMD="su -c"
+    elif [[ $EUID -eq 0 ]]; then
+        PRIV_CMD=""
+    else
+        throw_error "This script requires root privileges" "Please try again as root, or install sudo/su"
+    fi
+
+    # check for system updates
+    if command -v checkupdates &>/dev/null; then
+        UPDATES=$(checkupdates)
+    else
+        pacman -Sy --quiet &>/dev/null
+        UPDATES=$(pacman -Qu)
+    fi
+    if [[ ! -n "$UPDATES" ]]; then
+        updates_required=false # update bool
+    fi
+
+    # check which dependencies have already been installed
+    filter_installed DEPENDENCIES
+    if [[ ${#DEPENDENCIES[@]} -eq 0 ]]; then
+        dependencies_required=false # update bool
+    fi
+
+    # check if repo already exists
+    if test -d "~/$TARGET_REPO_NAME"; then
+        repo_exists=true # update bool
+    fi
+}
+run_step_checks
+
+
 display_main_menu () {
+    step=1
     update_terminal_dimensions
     clear
+    print ""
     print "<\c><m>"
     print "<w>     ███████╗ █████╗ ██████╗  █████╗ ███████╗     <m>██████╗  ██████╗ ████████╗███████╗     "
     print "<w>     ██╔════╝██╔══██╗██╔══██╗██╔══██╗██╔════╝     <m>██╔══██╗██╔═══██╗╚══██╔══╝██╔════╝     "
@@ -228,7 +309,7 @@ display_main_menu () {
     print "                     [ made w/ love by @sarasocial ]    │    [ Installer Bootstrap ]    │"
     print "                                                        └───────────────────────────────┘"
     print "<\j>"
-    announce_action "Starting Bootstrap"
+    print_action "Starting Bootstrap"
     print "<m><b>[ dotfiles repo ]"
     print "<reset><c>   <u>https://github.com/sarasocial/dotfiles<reset>"
     print "<m><b>[ this script ]"
@@ -239,18 +320,31 @@ display_main_menu () {
     print "<\j><w>Continuing will perform the following actions:"
     print ""
 
-    if [[ ${#DEPENDENCIES} > 0 ]]; then
-        print "    <m>1.<w> Install packages required by the dotfiles installer:"
+    # first step: update system
+    if [[ $updates_required == true ]]; then
+        print "    <m>$step.<w> Update system & packages"
+        step=2;
+    fi
+
+    # second step: install dependencies
+    if [[ $dependencies_required == true ]]; then
+        print "    <m>$step.<w> Install packages required by the dotfiles installer:"
         for i in "${DEPENDENCIES[@]}"; do
             print "            <m>$i"
         done
-        print "    <m>2.<w> Clone the dotfiles repository"
-        print "    <m>3.<w> Run the dotfiles installer"
-    else
-        print "    <m>1.<w> Clone the dotfiles repository"
-        print "    <m>2.<w> Run the dotfiles installer"
+        step=$(( step + 1));
     fi
 
+    # third step: clone repo
+    if [[ repo_exists == true ]]; then
+        print "    <m>$step.<w> Clone the dotfiles repository"
+    else
+        print "    <m>$step.<w> Overwrite existing dotfiles repository installation (optional)"
+    fi
+    step=$(( step + 1));
+    
+    # final step: run installer
+    print "    <m>$step.<w> Run the dotfiles installer"
     print ""
     print "No other changes will be made at this time."
     print ""
@@ -266,20 +360,9 @@ while true; do
     esac
 done
 
-announce_action "Installing Packages"
+print_action "Installing Packages"
 
 sleep 0.25
-
-if command -v sudo &>/dev/null; then
-    PRIV_CMD="sudo"
-elif command -v su &>/dev/null; then
-    PRIV_CMD="su -c"
-elif [[ $EUID -eq 0 ]]; then
-    PRIV_CMD=""
-else
-    echo "This script requires root privileges. Please run as root or install sudo/su."
-    exit 1
-fi
 
 sudo pacman -S "${DEPENDENCIES[*]}"
 
