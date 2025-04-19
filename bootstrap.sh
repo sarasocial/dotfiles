@@ -187,7 +187,6 @@ while true; do
     esac
 done
 
-read -p "testing testing 123: " yn
 while true; do
     read -p "testing testing 123: " yn
     case $yn in
