@@ -429,6 +429,7 @@ fi
 sleep 0.25
 
 if [[ $repo_exists == false ]]; then
+    sleep 0.25
     git clone $TARGET_REPO "~/$TARGET_REPO_NAME"
 else
     print "<reset>" '~/' "$TARGET_REPO_NAME already exists"
@@ -436,8 +437,11 @@ else
     prompt "Do you want to overwrite it? <m>[y/N]:<w> "
     case "$input" in
         [yY][eE][sS]|[yY])
+            sleep 0.25
             $PRIV_CMD rm -rf "~/$TARGET_REPO_NAME"
+            sleep 0.25
             git clone $TARGET_REPO "~/$TARGET_REPO_NAME"
+            sleep 0.25
             ;;
         *)
             ;;
@@ -448,6 +452,8 @@ repo_exists=false
 if test -d "~/$TARGET_REPO_NAME"; then
     repo_exists=true # update bool
 fi
+
+sleep 0.25
 
 if [[ $repo_exists == false ]]; then
     print_error "Unable to clone repository"
@@ -467,8 +473,6 @@ fi
 sleep 0.25
 print_action "Starting Installer..."
 sleep 0.25
-
-
 
 bash "~/$TARGET_REPO_NAME/install.sh"
 
