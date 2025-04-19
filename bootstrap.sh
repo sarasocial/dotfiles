@@ -192,6 +192,23 @@ print () {
     echo "$output"
 }
 
+announce_action () {
+    action=$1
+    if [[ $h_margin -ge 2 ]]; then
+        h_margin=$(( h_margin - 2 ))
+        update_terminal_dimensions
+        print "<j><reset><c>"
+        print "> [ <u>$action<reset><c> ]"
+        print "<w><reset>"
+        h_margin=$(( h_margin + 2 ))
+        update_terminal_dimensions
+    else
+        print "<j><reset><c><b>"
+        print "> [ <u>$action<reset><c><b> ]"
+        print "<w><reset>"
+    fi
+}
+
 # display_main_menu ()
     # pretty self-explanatory!
     # really just a bunch of print statements, takes a y/n
@@ -211,6 +228,7 @@ display_main_menu () {
     print "                     [ made w/ love by @sarasocial ]    │    [ Installer Bootstrap ]    │"
     print "                                                        └───────────────────────────────┘"
     print "<\j>"
+    announce_action "Starting Bootstrap"
     print "<m><b>[ dotfiles repo ]"
     print "<reset><w>   <u>https://github.com/sarasocial/dotfiles<reset>"
     print "<m><b>[ this script ]"
@@ -248,9 +266,7 @@ while true; do
     esac
 done
 
-print ""
-print "<c>[ Installing Packages ]<w>"
-print ""
+announce_action "Installing Packages"
 
 sleep 0.25
 
