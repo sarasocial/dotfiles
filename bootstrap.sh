@@ -95,14 +95,15 @@ margin_print() {
 
 # function: parse_tags
 print () {
+    reading=false
     formatted_text=""
-    raw_text=""
-    local input="$*"
+    clean_text=""
+    local raw_text="$*"
     local -a substrings=()
     # this regex splits by <...> and keeps the delimiters
     while IFS= read -r line; do
         substrings+=("$line")
-    done < <(perl -ne 'print "$_\n" for split(/(<[^>]+>)/)' <<< "$input")
+    done < <(perl -ne 'print "$_\n" for split(/(<[^>]+>)/)' <<< "$raw_text")
 
     for sub in "${substrings[@]}"; do
         if [[ "$sub" == \<* ]]; then
@@ -112,23 +113,32 @@ print () {
                 if [[ "$sub" == \\* ]]; then
                     sub="${sub#\\}"   # remove leading \
                     process_line_tag "$sub"
+                elif [[ "$sub" == "@" ]]; then
+                    reading=true
                 else
                     formatted_text+="$(process_text_tag $sub)"
                 fi
             else
                 formatted_text+="$sub"
-                raw_text+="$sub"
+                clean_text+="$sub"
             fi
         else
             formatted_text+="$sub"
-            raw_text+="$sub"
+            clean_text+="$sub"
         fi
     done
     
     if [[ "$display_type" == "centered" ]]; then
-        echo "$(center_print "$formatted_text" ${#raw_text})"
+        output="$(center_print "$formatted_text" ${#clean_text})"
     else
-        echo "$(margin_print "$formatted_text" ${#raw_text})"
+        output="$(margin_print "$formatted_text" ${#clean_text})"
+    fi
+
+    if [[ $reading == false ]]; then
+        echo "$output"
+    else
+        printf "$output"
+        read input
     fi
 }
 
@@ -166,14 +176,14 @@ display_main_menu () {
     print ""
     print "No other changes will be made."
     print ""
+    print "Do you want to proceed? <m>[y/N]<w>: <@>"
 }
 
 display_main_menu
 while true; do
-    read -p "$(print "Do you want to proceed? <m>[y/N]<w>: ")" yn
-    case $yn in
+    case $input in
         [Yy]* ) break;;
-        [nN]* ) clear; exit;;
+        [Nn]* ) clear; exit;;
         * ) display_main_menu;;
     esac
 done
