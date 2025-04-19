@@ -464,6 +464,12 @@ if [[ $repo_exists == false ]]; then
     esac
 fi
 
+sleep 0.25
+print_action "Starting Installer..."
+sleep 0.25
+
+
+
 bash "~/$TARGET_REPO_NAME/install.sh"
 
 # Ask: continue?
