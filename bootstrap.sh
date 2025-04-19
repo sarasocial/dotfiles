@@ -183,8 +183,8 @@ display_main_menu () {
 display_main_menu
 while true; do
     case "$yn" in
-        [Yy]* ) break;;
-        [Nn]* ) clear; exit;;
+        [yY][eE][sS]|[yY]) break;;
+        [nN][oO]|[nN]) clear; exit;;
         *) display_main_menu;;
     esac
 done
