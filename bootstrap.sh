@@ -177,7 +177,7 @@ display_main_menu () {
     print ""
     print "No other changes will be made."
     print ""
-    read -r -p "$(print "Do you want to proceed? <m>[y/N]<w>: <@>")" yn
+    read -r -p "$(print "Do you want to proceed? <m>[y/N]<w>: <@>")" yn < /dev/tty
 }
 
 display_main_menu
