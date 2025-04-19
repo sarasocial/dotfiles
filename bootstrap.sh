@@ -423,7 +423,7 @@ fi
 sleep 0.25
 
 if [[ $repo_exists == false ]]; then
-    git clone $TARGET_REPO ~/$TARGET_REPO_NAME
+    git clone $TARGET_REPO "~/$TARGET_REPO_NAME"
 else
     print "<reset>" '~/' "$TARGET_REPO_NAME already exists"
     print ""
@@ -431,7 +431,7 @@ else
     case "$input" in
         [yY][eE][sS]|[yY])
             $PRIV_CMD rm -rf "~/$TARGET_REPO_NAME"
-            git clone $TARGET_REPO ~/$TARGET_REPO_NAME
+            git clone $TARGET_REPO "~/$TARGET_REPO_NAME"
             exit
             ;;
         *)
