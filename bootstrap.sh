@@ -131,7 +131,7 @@ print () {
     if [[ $reading == false ]]; then
         text="$formatted_text"
     else
-        text="$clean_text"
+        text="$formatted_text"
     fi
     
     if [[ "$display_type" == "centered" ]]; then
@@ -189,6 +189,9 @@ while true; do
     esac
 done
 
+print ""
+print "<c>[ Installing Packages ]<w>"
+print ""
 
 sudo pacman -S "${DEPENDENCIES[*]}"
 
