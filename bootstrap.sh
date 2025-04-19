@@ -138,7 +138,7 @@ print () {
         echo "$output"
     else
         printf "$output"
-        read input
+        read -p "" input
     fi
 }
 
