@@ -67,7 +67,7 @@ check_for_updates () {
     if command -v checkupdates &>/dev/null; then
         UPDATES=$(checkupdates)
     else
-        pacman -Syu --quiet &>/dev/null
+        pacman -Sy --quiet &>/dev/null
         UPDATES=$(pacman -Qu)
     fi
     if [[ ! -n "$UPDATES" ]]; then
@@ -432,10 +432,8 @@ else
         [yY][eE][sS]|[yY])
             $PRIV_CMD rm -rf "~/$TARGET_REPO_NAME"
             git clone $TARGET_REPO "~/$TARGET_REPO_NAME"
-            exit
             ;;
         *)
-            break
             ;;
     esac
 fi
@@ -449,8 +447,14 @@ if [[ $repo_exists == false ]]; then
     print_error "Unable to clone repository"
     prompt "<w>Rerun the bootstrap script? <m>[y/N]:<w> "
     case "$input" in
-        [yY][eE][sS]|[yY]) curl -L sarasoci.al/dots.sh | bash; exit;;
-        *) clear; exit;;
+        [yY][eE][sS]|[yY])
+            curl -L sarasoci.al/dots.sh | bash
+            exit
+            ;;
+        *)
+            clear;
+            exit
+            ;;
     esac
 fi
 
