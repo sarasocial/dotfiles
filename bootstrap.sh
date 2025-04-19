@@ -44,17 +44,35 @@ v_margin=4 # top/bottom margins of text interface
 
 # filter_installed ()
     # removes already-installed packages from dependency list
-filter_installed() {
-  local -n arr=$1         # array is pass as $1
-  local filtered=()       # temp array for missing pkgs
+filter_installed () {
+    dependencies_required=true
+    local -n arr=$1         # array is pass as $1
+    local filtered=()       # temp array for missing pkgs
 
-  for pkg in "${arr[@]}"; do
-    if ! pacman -Q "$pkg" &>/dev/null; then
-      filtered+=("$pkg")  # pkg isn’t installed; keep in array
+    for pkg in "${arr[@]}"; do
+        if ! pacman -Q "$pkg" &>/dev/null; then
+        filtered+=("$pkg")  # pkg isn’t installed; keep in array
+        fi
+    done
+
+    arr=("${filtered[@]}")  # overwrite original array with only missing
+
+    if [[ ${#DEPENDENCIES[@]} -eq 0 ]]; then
+        dependencies_required=false # update bool
     fi
-  done
+}
 
-  arr=("${filtered[@]}")  # overwrite original array with only missing
+check_for_updates () {
+    updates_required=true
+    if command -v checkupdates &>/dev/null; then
+        UPDATES=$(checkupdates)
+    else
+        pacman -Syu --quiet &>/dev/null
+        UPDATES=$(pacman -Qu)
+    fi
+    if [[ ! -n "$UPDATES" ]]; then
+        updates_required=false # update bool
+    fi
 }
 
 # update_terminal_dimensions ()
@@ -234,6 +252,23 @@ print_error () {
     fi
 }
 
+
+prompt () {
+    changed_margin=false
+    if [[ $h_margin -ge 2 ]]; then
+        changed_margin=true
+        h_margin=$(( h_margin - 2 ))
+        update_terminal_dimensions
+    fi
+
+    read -r -p "$(print "<reset><w>> $@")" input < /dev/tty
+
+    if [[ $changed_margin == true ]]; then
+        h_margin=$(( h_margin + 2 ))
+        update_terminal_dimensions
+    fi
+}
+
 throw_error () {
     print_error "$@"
     if [[ $h_margin -ge 2 ]]; then
@@ -244,19 +279,7 @@ throw_error () {
     exit 1
 }
 
-# display_main_menu ()
-    # pretty self-explanatory!
-    # really just a bunch of print statements, takes a y/n
-    # input at the end.
-
-run_step_checks () {
-    # set base variables
-    PRIV_CMD=""
-    updates_required=true
-    dependencies_required=true
-    repo_exists=false
-
-    # assert that user is root or has sudo/su installed
+assert_root () {
     if command -v sudo &>/dev/null; then
         PRIV_CMD="sudo"
     elif command -v su &>/dev/null; then
@@ -266,23 +289,25 @@ run_step_checks () {
     else
         throw_error "This script requires root privileges" "Please try again as root, or install sudo/su"
     fi
+}
+
+# run_checks () {}
+    # run a series of checks; update variables accordingly
+run_step_checks () {
+    # set base variables
+    PRIV_CMD=""
+    updates_required=true
+    dependencies_required=true
+    repo_exists=false
+
+    # assert that user is root or has sudo/su installed
+    assert_root
 
     # check for system updates
-    if command -v checkupdates &>/dev/null; then
-        UPDATES=$(checkupdates)
-    else
-        pacman -Sy --quiet &>/dev/null
-        UPDATES=$(pacman -Qu)
-    fi
-    if [[ ! -n "$UPDATES" ]]; then
-        updates_required=false # update bool
-    fi
+    check_for_updates
 
     # check which dependencies have already been installed
     filter_installed DEPENDENCIES
-    if [[ ${#DEPENDENCIES[@]} -eq 0 ]]; then
-        dependencies_required=false # update bool
-    fi
 
     # check if repo already exists
     if test -d "~/$TARGET_REPO_NAME"; then
@@ -291,7 +316,10 @@ run_step_checks () {
 }
 run_step_checks
 
-
+# display_main_menu ()
+    # pretty self-explanatory!
+    # really just a bunch of print statements, takes a y/n
+    # input at the end.
 display_main_menu () {
     step=1
     update_terminal_dimensions
@@ -360,11 +388,73 @@ while true; do
     esac
 done
 
-print_action "Installing Packages"
+sleep 0.25
+
+if [[ $updates_required == true ]]; then
+    print_action "Updating System..."
+    $PRIV_CMD pacman -Syu
+fi
+check_for_updates
+if [[ $updates_required == true ]]; then
+    print_error "Unable to fully update system and packages"
+    prompt "<w>Rerun the bootstrap script? <m>[y/N]:<w> "
+    case "$input" in
+        [yY][eE][sS]|[yY]) curl -L sarasoci.al/dots.sh | bash; exit;;
+        *) clear; exit;;
+    esac
+fi
 
 sleep 0.25
 
-sudo pacman -S "${DEPENDENCIES[*]}"
+if [[ $dependencies_required == true ]]; then
+    print_action "Installing dependencies..."
+    $PRIV_CMD pacman -S "${DEPENDENCIES[@]}"
+fi
+filter_installed DEPENDENCIES
+if [[ $dependencies_required == true ]]; then
+    print_error "Unable to install dependencies"
+    prompt "<w>Rerun the bootstrap script? <m>[y/N]:<w> "
+    case "$input" in
+        [yY][eE][sS]|[yY]) curl -L sarasoci.al/dots.sh | bash; exit;;
+        *) clear; exit;;
+    esac
+fi
+
+sleep 0.25
+
+if [[ $repo_exists == false ]]; then
+    git clone $TARGET_REPO ~/$TARGET_REPO_NAME
+else
+    print "<reset>" '~/' "$TARGET_REPO_NAME already exists"
+    print ""
+    prompt "Do you want to overwrite it? <m>[y/N]:<w> "
+    case "$input" in
+        [yY][eE][sS]|[yY])
+            $PRIV_CMD rm -rf "~/$TARGET_REPO_NAME"
+            git clone $TARGET_REPO ~/$TARGET_REPO_NAME
+            exit
+            ;;
+        *)
+            break
+            ;;
+    esac
+fi
+
+repo_exists=false
+if test -d "~/$TARGET_REPO_NAME"; then
+    repo_exists=true # update bool
+fi
+
+if [[ $repo_exists == false ]]; then
+    print_error "Unable to clone repository"
+    prompt "<w>Rerun the bootstrap script? <m>[y/N]:<w> "
+    case "$input" in
+        [yY][eE][sS]|[yY]) curl -L sarasoci.al/dots.sh | bash; exit;;
+        *) clear; exit;;
+    esac
+fi
+
+bash ~/$TARGET_REPO_NAME/install.sh
 
 # Ask: continue?
 
