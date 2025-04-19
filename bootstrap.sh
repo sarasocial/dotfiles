@@ -1,5 +1,34 @@
+#   bootstrap.sh | @sarasocial
+#   updated 04.19.2025
+# 
+#   this script functions as a bootstrap for my dotfiles
+#   installer. it can be called with:
+#
+#           $ curl -L sarasoci.al/dots.sh | bash
+# 
+#   it performs the following actions, as approved
+#   by the user:
+#
+#       1. [ Update System ]
+#              if no updates pending, this step is skipped.
+#
+#       2. [ Install Dependencies ]
+#              if no packages are needed, this step is skipped.
+#
+#       3. [ Download Repo]
+#              if the dotfiles repo has already been downloaded,
+#              the script will ask the user if they wish to
+#              redownload it.
+#              [source]: https://github.com/sarasocial/dotfiles
+#
+#       4. [ Run Installer ]
+#              this happens automatically at the end of the
+#              script; the user is not prompted.
 #!/bin/bash
 
+# [ DEPENDENCIES ]
+# contains a list of packages to be installed with pacman.
+# updating this list changes which packages are installed.
 DEPENDENCIES=(
     git
     gum
@@ -8,33 +37,35 @@ DEPENDENCIES=(
 h_margin=6 # left/right margins of text interface
 v_margin=4 # top/bottom margins of text interface
 
-# define a function that filters an array in-place
+# filter_installed ()
+    # removes already-installed packages from dependency list
 filter_installed() {
-  local -n arr=$1         # nameref to the array you pass in
+  local -n arr=$1         # array is pass as $1
   local filtered=()       # temp array for missing pkgs
 
   for pkg in "${arr[@]}"; do
     if ! pacman -Q "$pkg" &>/dev/null; then
-      filtered+=("$pkg")  # pkg isn’t installed, keep it
+      filtered+=("$pkg")  # pkg isn’t installed; keep in array
     fi
   done
 
-  arr=("${filtered[@]}")  # overwrite original arr with only missing
+  arr=("${filtered[@]}")  # overwrite original array with only missing
 }
 
+# run filter_installed () on dependencies
 filter_installed DEPENDENCIES
 
-echo ""
-echo "The following packages will be installed: ${DEPENDENCIES[*]}"
-
+# update_terminal_dimensions ()
+    # literally just updates the terminal dimensions lol
 update_terminal_dimensions() {
     cols=$(tput cols)
     lines=$(tput lines)
     width=$(( cols - h_margin ))
     height=$(( lines - v_margin ))
 }
-update_terminal_dimensions
 
+    # formatting codes; full names aren't really necessary but
+    # oh well !
 declare -A FORMAT_CODES=(
     [b]="$(tput bold)"
     [bold]="$(tput bold)"
@@ -58,24 +89,33 @@ declare -A FORMAT_CODES=(
     [reset]="$(tput sgr0)"  # full reset
 )
 
+# process_line_tag ()
+    # function that processes line tags and can switch the display
+    # type from centered to justified, and vice versa
 display_type="justified"
 process_line_tag () {
-    local tag="$1"
+    local tag="$1"  # line tag as $1
     case $tag in
-        "c"|"C")
+        [cC]*)    # if tag is centered, swap to centered
             display_type="centered"
             ;;
-        *)
+        *)        # else, swap to justified
             display_type="justified"
             ;;
     esac
 }
 
+# process_text_tag ()
+    # simply takes a text tag as an input and converts it into
+    # a format code, ie. $(tput bold)
 process_text_tag () {
     local tag="$1"
     echo "${FORMAT_CODES[$tag]}"
 }
 
+# center_print ()
+    # if display mode is centered, this will print text centered
+    # in the terminal
 center_print() {
     local text="$1"
     local length="$2"
@@ -85,15 +125,24 @@ center_print() {
     printf "%*s%s\n" "$padding" "" "$text"
 }
 
-margin_print() {
+# justify_print ()
+    # if display mode is justified, this will print text justified*
+    # in the terminal
+justify_print() {
     local text="$1"
     local length="$2"
 
     # center the composed text
-    printf "%*s%s\n" "$h_margin" "" "$text"
+    printf "%*s%s\n" "$h_margin" "" "$text" # *not actually justified lmao
 }
 
-# function: parse_tags
+# function: print ()
+    # does a bunch of goofy ass inefficient formatting shit using the
+    # above functions and the below logic. meant to parse a single
+    # line of text. supports the following:
+        # text tags: <b>, </>, <w>, <r>, ... etc
+        # line tags: <\c>, <\j>
+        # read input tag: <@>
 print () {
     reading=false
     formatted_text=""
@@ -137,13 +186,18 @@ print () {
     if [[ "$display_type" == "centered" ]]; then
         output="$(center_print "$text" ${#clean_text})"
     else
-        output="$(margin_print "$text" ${#clean_text})"
+        output="$(justify_print "$text" ${#clean_text})"
     fi
 
     echo "$output"
 }
 
+# display_main_menu ()
+    # pretty self-explanatory!
+    # really just a bunch of print statements, takes a y/n
+    # input at the end.
 display_main_menu () {
+    update_terminal_dimensions
     clear
     print "<\c><m>"
     print "<w>     ███████╗ █████╗ ██████╗  █████╗ ███████╗     <m>██████╗  ██████╗ ████████╗███████╗     "
@@ -154,11 +208,16 @@ display_main_menu () {
     print "<m>│<w>    ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝     <m>╚═════╝  ╚═════╝    ╚═╝   ╚══════╝    │"
     print "│                                                                                       │"
     print "└───────────────────────────────────────────────────────┐                               │"
-    print "                  [ github.com/sarasocial/dotfiles ]    │    [ Installer Bootstrap ]    │"
+    print "                     [ made w/ love by @sarasocial ]    │    [ Installer Bootstrap ]    │"
     print "                                                        └───────────────────────────────┘"
-    print ""
-    print ""
-    print ""
+    print "<\j>"
+    print "<m><b>[ dotfiles repo ]"
+    print "<reset><w>   <u>https://github.com/sarasocial/dotfiles<reset>"
+    print "<m><b>[ this script ]"
+    print "<reset><w>   <u>https://sarasoci.al/dots.sh<reset>"
+    print "<m><b>[ more sara ♡ ]"
+    print "<reset><w>   <u>https://sarasoci.al<reset>"
+    print "</>"
     print "<\j><w>Continuing will perform the following actions:"
     print ""
 
@@ -175,7 +234,7 @@ display_main_menu () {
     fi
 
     print ""
-    print "No other changes will be made."
+    print "No other changes will be made at this time."
     print ""
     read -r -p "$(print "Do you want to proceed? <m>[y/N]<w>: <@>")" yn < /dev/tty
 }
@@ -192,6 +251,19 @@ done
 print ""
 print "<c>[ Installing Packages ]<w>"
 print ""
+
+sleep 0.25
+
+if command -v sudo &>/dev/null; then
+    PRIV_CMD="sudo"
+elif command -v su &>/dev/null; then
+    PRIV_CMD="su -c"
+elif [[ $EUID -eq 0 ]]; then
+    PRIV_CMD=""
+else
+    echo "This script requires root privileges. Please run as root or install sudo/su."
+    exit 1
+fi
 
 sudo pacman -S "${DEPENDENCIES[*]}"
 
