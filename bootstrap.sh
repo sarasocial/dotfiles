@@ -137,7 +137,7 @@ print () {
     if [[ $reading == false ]]; then
         echo "$output"
     else
-        read -p "$clean_text" input
+        echo "$clean_text"
     fi
 }
 
@@ -175,24 +175,15 @@ display_main_menu () {
     print ""
     print "No other changes will be made."
     print ""
-    print "Do you want to proceed? <m>[y/N]<w>: <@>"
+    yn="$(print "Do you want to proceed? <m>[y/N]<w>: <@>")"
 }
 
 display_main_menu
 while true; do
-    case $input in
-        [Yy]* ) break;;
-        [Nn]* ) clear; exit;;
-        * ) display_main_menu;;
-    esac
-done
-
-while true; do
-    read -p "testing testing 123: " yn
     case $yn in
         [Yy]* ) break;;
         [Nn]* ) clear; exit;;
-        * ) echo "wrong!";;
+        * ) display_main_menu;;
     esac
 done
 
