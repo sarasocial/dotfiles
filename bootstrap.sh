@@ -95,7 +95,6 @@ margin_print() {
 
 # function: parse_tags
 print () {
-    reading=false
     formatted_text=""
     raw_text=""
     local input="$*"
@@ -113,8 +112,6 @@ print () {
                 if [[ "$sub" == \\* ]]; then
                     sub="${sub#\\}"   # remove leading \
                     process_line_tag "$sub"
-                elif [[ "$sub" == "@" ]]; then
-                    reading=true
                 else
                     formatted_text+="$(process_text_tag $sub)"
                 fi
@@ -129,15 +126,9 @@ print () {
     done
     
     if [[ "$display_type" == "centered" ]]; then
-        output="$(center_print "$formatted_text" ${#raw_text})"
+        echo "$(center_print "$formatted_text" ${#raw_text})"
     else
-        output="$(margin_print "$formatted_text" ${#raw_text})"
-    fi
-
-    if [[ $reading == false ]]; then
-        echo "$output"
-    else
-        read -p "$output" yn
+        echo "$(margin_print "$formatted_text" ${#raw_text})"
     fi
 }
 
@@ -175,14 +166,14 @@ display_main_menu () {
     print ""
     print "No other changes will be made."
     print ""
-    print "Do you want to proceed? <m>[y/N]<w>: <@>"
 }
 
 display_main_menu
 while true; do
+    read -p "$(print "Do you want to proceed? <m>[y/N]<w>: ")" yn
     case $yn in
         [Yy]* ) break;;
-        [Nn]* ) clear; exit;;
+        [nN]* ) clear; exit;;
         * ) display_main_menu;;
     esac
 done
