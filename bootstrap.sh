@@ -1,3 +1,4 @@
+#!/bin/bash
 #   bootstrap.sh | @sarasocial
 #   updated 04.19.2025
 # 
@@ -24,29 +25,300 @@
 #       4. [ Run Installer ]
 #              this happens automatically at the end of the
 #              script; the user is not prompted.
-#!/bin/bash
 
-# [ TARGET REPO ]
-# the repo to be downloaded
+
+
+# =============================================================================
+#                                [ VARIABLES ]
+# =============================================================================
+# TARGET_REPO: url to the repo to be downloaded
 TARGET_REPO="https://github.com/sarasocial/dotfiles"
-TARGET_REPO_NAME="sarasocial-dotfiles" # the name that git clone sets
+# TARGET_DIR_NAME: directory name for downloaded repo
+TARGET_REPO_NAME="sarasocial-dotfiles"
 
-# [ DEPENDENCIES ]
-# contains a list of packages to be installed with pacman.
+# DEPENDENCIES: contains a list of packages to be installed with pacman.
 # updating this list changes which packages are installed.
 DEPENDENCIES=(
     git
-    gum
+    gum # yum
 )
 
-h_margin=6 # left/right margins of text interface
-v_margin=4 # top/bottom margins of text interface
+h_margin=6
+v_margin=2
+indent_level=0
+indent_strength=4
+indent_actual=0
+min_indent=-1
 
-# filter_installed ()
-    # removes already-installed packages from dependency list
+# FORMAT_CODES: tputs for text interface formatting
+declare -A FORMAT_CODES=(
+    [b]="$(tput bold)"
+    [bold]="$(tput bold)"
+    [u]="$(tput smul)"
+    [underline]="$(tput smul)"
+    [r]="$(tput setaf 1)"   # red
+    [red]="$(tput setaf 1)"   # red
+    [g]="$(tput setaf 2)"   # green
+    [green]="$(tput setaf 2)"   # green
+    [y]="$(tput setaf 3)"   # yellow
+    [yellow]="$(tput setaf 3)"   # yellow
+    [bl]="$(tput setaf 4)"  # blue
+    [blue]="$(tput setaf 4)"  # blue
+    [m]="$(tput setaf 5)"   # magenta
+    [magenta]="$(tput setaf 5)"   # magenta
+    [c]="$(tput setaf 6)"   # cyan
+    [cyan]="$(tput setaf 6)"   # cyan
+    [w]="$(tput setaf 7)"   # white
+    [white]="$(tput setaf 7)"   # white
+    [/]="$(tput sgr0)"  # full reset
+    [reset]="$(tput sgr0)"  # full reset
+)
+
+
+display_type="justify"
+dependencies_required=true
+updates_required=true
+
+
+
+# =============================================================================
+#                             [ PRINT FUNCTIONS ]
+# =============================================================================
+# FUNC: update_terminal_dimensions (<int h_margin?>, <int v_margin?>):
+# DESC: updates terminal dimensions; can be fed new values for h_margin &
+#       v_margin
+update_terminal_dimensions() {
+    cols=$(tput cols)               # total columns of terminal
+    lines=$(tput lines)             # total lines of terminal
+    width=$(( cols - l_margin - r_margin ))    # usable columns of terminal, per h_margin
+    height=$(( lines - t_margin - b_margin ))  # usable lines of terminal, per v_marign
+    l_space=
+}; update_terminal_dimensions
+
+
+# FUNC: update_terminal_dimensions (<h=int>?, <v=int>?):
+# DESC: updates terminal dimensions; can be fed new values for h_margin &
+#       v_margin
+# USE:  
+h_margin_default=$h_margin
+v_margin_default=$v_margin
+h_margin_cached=$h_margin
+v_margin_cached=$v_margin
+margin () {
+    local op=$1
+    local temp_h_margin_cached=$h_margin
+    local temp_h_margin_cached=$v_margin
+    case "$op" in
+        [rR]*) # reset
+            h_margin=$h_margin_default
+            v_margin=$v_margin_default
+            h_margin_cached=$temp_h_margin_cached
+            v_margin_cached=$temp_v_margin_cached
+            ;;
+        [sS][wW][aA][pP]|[rR][eE][sS][tT][oO][rR][eE]) # swap / restore
+            h_margin=$h_margin_cached
+            v_margin=$v_margin_cached
+            h_margin_cached=$temp_h_margin_cached
+            v_margin_cached=$temp_v_margin_cached
+            ;;
+        [sS][eE][tT])   # swap to cached margins
+            shift
+            h_margin_cached=$temp_h_margin_cached
+            v_margin_cached=$temp_v_margin_cached
+            for arg in "$@"; do
+                case $arg in
+                    h=*)    # sets horizontal margin & caches
+                        h_margin="${arg#h=}"
+                        ;;
+                    v=*)    # sets vertical margin & caches
+                        v_margin="${arg#v=}"
+                        ;;
+                    h+=*)    # sets horizontal margin & caches
+                        local new_margin=$(( h_margin - "${arg#h+=}" ))
+                        if [[ $new_margin < 0 ]]; then new_margin=0; fi
+                        h_margin=$new_margin
+                        ;;
+                    v+=*)    # sets vertical margin & caches
+                        local new_margin=$(( v_margin + "${arg#v+=}" ))
+                        if [[ $new_margin < 0 ]]; then new_margin=0; fi
+                        v_margin=$new_margin
+                        ;;
+                    h-=*)    # sets horizontal margin & caches
+                        local new_margin=$(( h_margin - "${arg#h-=}" ))
+                        if [[ $new_margin < 0 ]]; then new_margin=0; fi
+                        h_margin=$new_margin
+                        ;;
+                    v-=*)    # sets vertical margin & caches
+                        local new_margin=$(( v_margin - "${arg#v-=}" ))
+                        if [[ $new_margin < 0 ]]; then new_margin=0; fi
+                        v_margin=$new_margin
+                        ;;
+                    *)   echo "warning: unknown arg '$arg'" ;;
+                esac
+            done
+
+            v_margin_cached=$temp_v_margin_cached
+            h_margin_cached=$temp_h_margin_cached
+            ;;
+        *)
+            operated=false
+            ;;
+    esac
+    update_terminal_dimensions
+}
+
+
+indent_default=$indent_level
+indent_cached=$indent_level
+indent () {
+    local op=$1
+    local temp_indent_cached=$indent_level
+    case "$op" in
+        [rR]*) # reset
+            indent_level=$indent_default
+            indent_cached=$temp_indent_cached
+            ;;
+        [sS][wW][aA][pP]|[rR][eE][sS][tT][oO][rR][eE]) # swap / restore
+            indent_level=$indent_cached
+            indent_cached=$temp_indent_cached
+            ;;
+        [sS][eE][tT])   # swap to cached margins
+            shift
+            indent_cached=$temp_indent_cached
+            for arg in "$@"; do
+                case $arg in
+                    [0-9]*|-[0-9]*)    # sets horizontal margin & caches
+                        indent_level="${arg#}"
+                        ;;
+                    +*)    # sets horizontal margin & caches
+                        local new_indent=$(( indent_level + "${arg#+}" ))
+                        if [[ $indent_level < $min_indent ]]; then new_indent=$min_indent; fi
+                        indent_level=$new_indent
+                        ;;
+                    -*)    # sets vertical margin & caches
+                        local new_indent=$(( indent_level - "${arg#-}" ))
+                        if [[ $indent_level < $min_indent ]]; then new_indent=$min_indent; fi
+                        indent_level=$new_indent
+                        ;;
+                    *)   echo "warning: unknown arg '$arg'" ;;
+                esac
+            done
+            indent_cached=$temp_indent_cached
+            ;;
+        *)
+            operated=false
+            ;;
+    esac
+    indent_actual=$(( indent_level * indent_strength ))
+    update_terminal_dimensions
+}
+
+# FUNC: process_line_tag (<str tag>):
+# DESC: processes line tags; these switch display type from centered to
+#       justified, and vice versa.
+process_line_tag () {
+    local tag="$1"  # line tag as $1
+    case $tag in
+        [cC]*)    # if tag is centered, swap to centered
+            display_type="center"
+            ;;
+        *)        # else, swap to justified
+            display_type="justify"
+            ;;
+    esac
+}
+
+
+# FUNC: process_text_tag (<str tag>):
+# DESC: takes an inputted text tag & converts it into a format code
+#       ie. $(tput bold)
+process_text_tag () {
+    local tag="$1"
+    echo "${FORMAT_CODES[$tag]}"
+}
+
+
+# center_print ()
+    # if display mode is centered, this will print text centered
+    # in the terminal
+print_center () {
+    local text="$1"
+    local length="$2"
+
+    # center the composed text
+    local padding=$(( (cols - length) / 2 ))
+    printf "%*s%s\n" "$padding" "" "$text"
+}
+
+
+# justify_print (<str text>, <str raw_text>)
+# prints $text justified to $width, using $raw_text lengths,
+# with $h_margin spaces to the left and hyphens when needed
+# justify_print (<str text>, <str raw_text>)
+# prints $text justified to $width, using $raw_text for length calcs;
+# prefixes each line with $h_margin spaces, wraps and hyphenates as needed
+print_justify () {
+    local text="$1"
+    local raw="$2"
+    local max=$width
+    local total_whitespace=$(( indent_actual + h_margin ))
+
+    # split into parallel arrays on spaces
+    local -a words raws
+    IFS=' ' read -r -a words <<< "$text"
+    IFS=' ' read -r -a raws  <<< "$raw"
+
+    local line=""      # accumulates words for this line
+    local len=0        # raw-text length of $line
+
+    for i in "${!words[@]}"; do
+        local w=${words[i]}
+        local r=${raws[i]}
+        local rlen=${#r}
+
+        # will it fit (plus a space if not first word)?
+        if (( len + (len>0 ? 1 : 0) + rlen <= max )); then
+        if (( len > 0 )); then
+            line+=" $w"
+            (( len += 1 + rlen ))
+        else
+            line="$w"
+            len=$rlen
+        fi
+
+        else
+        # word itself too long → hyphenate
+        if (( rlen > max )); then
+            # flush existing line
+            [[ -n $line ]] && printf "%*s%s\n" "$total_whitespace" "" "$line"
+            line=""; len=0
+            # break off as much as fits minus 1 for the hyphen
+            local avail=$(( max - 1 ))
+            local head=${w:0:avail}
+            local tail=${w:avail}
+            printf "%*s%s-\n" "$total_whitespace" "" "$head"
+            line="$tail"
+            len=${#tail}
+
+        else
+            # normal wrap
+            printf "%*s%s\n" "$total_whitespace" "" "$line"
+            line="$w"
+            len=$rlen
+        fi
+        fi
+    done
+
+    # print any leftover
+    [[ -n $line ]] && printf "%*s%s\n" "$total_whitespace" "" "$line"
+}
+
+
+# FUNC: filter_installed () <array>
+# removes already-installed packages from dependency list
 filter_installed () {
     dependencies_required=true
-    local -n arr=$1         # array is pass as $1
+    local -n arr=$1         # array is passed as $1
     local filtered=()       # temp array for missing pkgs
 
     for pkg in "${arr[@]}"; do
@@ -73,87 +345,6 @@ check_for_updates () {
     if [[ ! -n "$UPDATES" ]]; then
         updates_required=false # update bool
     fi
-}
-
-# update_terminal_dimensions ()
-    # literally just updates the terminal dimensions lol
-update_terminal_dimensions() {
-    cols=$(tput cols)
-    lines=$(tput lines)
-    width=$(( cols - h_margin ))
-    height=$(( lines - v_margin ))
-}
-
-    # formatting codes; full names aren't really necessary but
-    # oh well !
-declare -A FORMAT_CODES=(
-    [b]="$(tput bold)"
-    [bold]="$(tput bold)"
-    [u]="$(tput smul)"
-    [underline]="$(tput smul)"
-    [r]="$(tput setaf 1)"   # red
-    [red]="$(tput setaf 1)"   # red
-    [g]="$(tput setaf 2)"   # green
-    [green]="$(tput setaf 2)"   # green
-    [y]="$(tput setaf 3)"   # yellow
-    [yellow]="$(tput setaf 3)"   # yellow
-    [bl]="$(tput setaf 4)"  # blue
-    [blue]="$(tput setaf 4)"  # blue
-    [m]="$(tput setaf 5)"   # magenta
-    [magenta]="$(tput setaf 5)"   # magenta
-    [c]="$(tput setaf 6)"   # cyan
-    [cyan]="$(tput setaf 6)"   # cyan
-    [w]="$(tput setaf 7)"   # white
-    [white]="$(tput setaf 7)"   # white
-    [/]="$(tput sgr0)"  # full reset
-    [reset]="$(tput sgr0)"  # full reset
-)
-
-# process_line_tag ()
-    # function that processes line tags and can switch the display
-    # type from centered to justified, and vice versa
-display_type="justified"
-process_line_tag () {
-    local tag="$1"  # line tag as $1
-    case $tag in
-        [cC]*)    # if tag is centered, swap to centered
-            display_type="centered"
-            ;;
-        *)        # else, swap to justified
-            display_type="justified"
-            ;;
-    esac
-}
-
-# process_text_tag ()
-    # simply takes a text tag as an input and converts it into
-    # a format code, ie. $(tput bold)
-process_text_tag () {
-    local tag="$1"
-    echo "${FORMAT_CODES[$tag]}"
-}
-
-# center_print ()
-    # if display mode is centered, this will print text centered
-    # in the terminal
-center_print() {
-    local text="$1"
-    local length="$2"
-
-    # center the composed text
-    local padding=$(( (cols - length) / 2 ))
-    printf "%*s%s\n" "$padding" "" "$text"
-}
-
-# justify_print ()
-    # if display mode is justified, this will print text justified*
-    # in the terminal
-justify_print() {
-    local text="$1"
-    local length="$2"
-
-    # center the composed text
-    printf "%*s%s\n" "$h_margin" "" "$text" # *not actually justified lmao
 }
 
 # function: print ()
@@ -203,10 +394,10 @@ print () {
         text="$formatted_text"
     fi
     
-    if [[ "$display_type" == "centered" ]]; then
-        output="$(center_print "$text" ${#clean_text})"
+    if [[ "$display_type" == "center" ]]; then
+        output="$(print_center "$text" ${#clean_text})"
     else
-        output="$(justify_print "$text" ${#clean_text})"
+        output="$(print_justify "$text" "$clean_text")"
     fi
 
     echo "$output"
@@ -215,13 +406,12 @@ print () {
 print_action () {
     action=$1
     if [[ $h_margin -ge 2 ]]; then
-        h_margin=$(( h_margin - 2 ))
-        update_terminal_dimensions
+        margin set h=0
         print "<j><reset><c>"
         print "> [ <u>$action<reset><c> ]"
         print "<w><reset>"
-        h_margin=$(( h_margin + 2 ))
-        update_terminal_dimensions
+        margin swap
+        indent swap
     else
         print "<j><reset><c><b>"
         print "> [ <u>$action<reset><c><b> ]"
@@ -235,8 +425,7 @@ print_error () {
 
     if [[ $h_margin -ge 2 ]]; then
         changed_margin=true
-        h_margin=$(( h_margin - 2 ))
-        update_terminal_dimensions
+        margin set "h-=2"
     fi
 
     print "<j><reset><b>"
@@ -247,8 +436,7 @@ print_error () {
     print "<w><reset>"
 
     if [[ $changed_margin == true ]]; then
-        h_margin=$(( h_margin + 2 ))
-        update_terminal_dimensions
+        margin swap
     fi
 }
 
@@ -257,23 +445,20 @@ prompt () {
     changed_margin=false
     if [[ $h_margin -ge 2 ]]; then
         changed_margin=true
-        h_margin=$(( h_margin - 2 ))
-        update_terminal_dimensions
+        margin set "h-=2"
     fi
 
     read -r -p "$(print "<reset><w>> $@")" input < /dev/tty
 
     if [[ $changed_margin == true ]]; then
-        h_margin=$(( h_margin + 2 ))
-        update_terminal_dimensions
+        margin swap
     fi
 }
 
 throw_error () {
     print_error "$@"
     if [[ $h_margin -ge 2 ]]; then
-        h_margin=$(( h_margin - 2 ))
-        update_terminal_dimensions
+        margin set "h-=2"
     fi
     read -n 1 -s -r -p "$(print "<w>> Press any key to exit ")"
     exit 1
@@ -303,9 +488,6 @@ run_step_checks () {
     # assert that user is root or has sudo/su installed
     assert_root
 
-    # check for system updates
-    check_for_updates
-
     # check which dependencies have already been installed
     filter_installed DEPENDENCIES
 
@@ -322,7 +504,7 @@ run_step_checks
     # input at the end.
 display_main_menu () {
     step=1
-    update_terminal_dimensions
+    margin set h=6
     clear
     print ""
     print "<\c><m>"
@@ -347,13 +529,13 @@ display_main_menu () {
     print "</>"
     print "<\j><w>Continuing will perform the following actions:"
     print ""
+    indent set 1
 
     # first step: update system
     if [[ $updates_required == true ]]; then
         print "    <m>$step.<w> Update system & packages"
         step=2;
     fi
-
     # second step: install dependencies
     if [[ $dependencies_required == true ]]; then
         print "    <m>$step.<w> Install packages required by the dotfiles installer:"
@@ -373,6 +555,7 @@ display_main_menu () {
     
     # final step: run installer
     print "    <m>$step.<w> Run the dotfiles installer"
+    indent set 0
     print ""
     print "No other changes will be made at this time."
     print ""
@@ -388,7 +571,7 @@ while true; do
     esac
 done
 
-sleep 0.25
+sleep 0.1
 
 if [[ $updates_required == true ]]; then
     print_action "Updating System..."
@@ -404,7 +587,7 @@ if [[ $updates_required == true ]]; then
     esac
 fi
 
-sleep 0.25
+sleep 0.1
 
 if [[ $dependencies_required == true ]]; then
     print_action "Installing dependencies..."
@@ -426,10 +609,10 @@ if [[ $dependencies_required == true ]]; then
     esac
 fi
 
-sleep 0.25
+sleep 0.1
 
 if [[ $repo_exists == false ]]; then
-    sleep 0.25
+    sleep 0.1
     git clone $TARGET_REPO "~/$TARGET_REPO_NAME"
 else
     print "<reset>" '~/' "$TARGET_REPO_NAME already exists"
@@ -437,11 +620,11 @@ else
     prompt "Do you want to overwrite it? <m>[y/N]:<w> "
     case "$input" in
         [yY][eE][sS]|[yY])
-            sleep 0.25
+            sleep 0.1
             $PRIV_CMD rm -rf "~/$TARGET_REPO_NAME"
-            sleep 0.25
+            sleep 0.1
             git clone $TARGET_REPO "~/$TARGET_REPO_NAME"
-            sleep 0.25
+            sleep 0.1
             ;;
         *)
             ;;
@@ -453,7 +636,7 @@ if test -d "~/$TARGET_REPO_NAME"; then
     repo_exists=true # update bool
 fi
 
-sleep 0.25
+sleep 0.1
 
 if [[ $repo_exists == false ]]; then
     print_error "Unable to clone repository"
@@ -470,9 +653,9 @@ if [[ $repo_exists == false ]]; then
     esac
 fi
 
-sleep 0.25
+sleep 0.1
 print_action "Starting Installer..."
-sleep 0.25
+sleep 0.1
 
 bash "~/$TARGET_REPO_NAME/install.sh"
 
