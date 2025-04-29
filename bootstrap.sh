@@ -580,10 +580,15 @@ fi
 check_for_updates
 if [[ $updates_required == true ]]; then
     print_error "Unable to fully update system and packages"
-    prompt "<w>Rerun the bootstrap script? <m>[y/N]:<w> "
+    prompt "<w>Continue without fully updating? <m>[y/N]:<w> "
     case "$input" in
-        [yY][eE][sS]|[yY]) curl -L sarasoci.al/dots.sh | bash; exit;;
-        *) clear; exit;;
+        [yY][eE][sS]|[yY])
+        *)
+            prompt "<w>Rerun the bootstrap script? <m>[y/N]:<w> "
+            case "$input" in
+                [yY][eE][sS]|[yY]) curl -L sarasoci.al/dots.sh | bash; exit;;
+                *) clear; exit;;
+            esac
     esac
 fi
 
