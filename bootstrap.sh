@@ -238,6 +238,15 @@ process_text_tag () {
 }
 
 
+# FUNC: prefix (<str prefix>):
+# DESC: takes an inputted text tag & converts it into a format code
+#       ie. $(tput bold)
+process_text_tag () {
+    local tag="$1"
+    echo "${FORMAT_CODES[$tag]}"
+}
+
+
 # center_print ()
     # if display mode is centered, this will print text centered
     # in the terminal
@@ -428,10 +437,33 @@ print_error () {
         margin set "h-=2"
     fi
 
+    prefix "    | $line"
     print "<j><reset><b>"
-    print "<r>! [ ERROR ]<reset>"
+    print "<r>[ ERROR ]<reset>"
     for line in "$@"; do
-        print "<r>     | $line"
+        print "<r>$line"
+    done
+    print "<w><reset>"
+
+    if [[ $changed_margin == true ]]; then
+        margin swap
+    fi
+}
+
+print_warning () {
+    changed_margin=false
+    error_message=$1
+
+    if [[ $h_margin -ge 2 ]]; then
+        changed_margin=true
+        margin set "h-=2"
+    fi
+
+    prefix "    | $line"
+    print "<j><reset><b>"
+    print "<y>[ WARNING ]<reset>"
+    for line in "$@"; do
+        print "<y>$line"
     done
     print "<w><reset>"
 
@@ -582,7 +614,7 @@ if [[ $updates_required == true ]]; then
     print_error "Unable to fully update system and packages"
     prompt "<w>Continue without fully updating? <m>[y/N]:<w> "
     case "$input" in
-        [yY][eE][sS]|[yY])
+        [yY][eE][sS]|[yY]) input="";;
         *)
             prompt "<w>Rerun the bootstrap script? <m>[y/N]:<w> "
             case "$input" in
@@ -620,8 +652,7 @@ if [[ $repo_exists == false ]]; then
     sleep 0.1
     git clone $TARGET_REPO "~/$TARGET_REPO_NAME"
 else
-    print "<reset>" '~/' "$TARGET_REPO_NAME already exists"
-    print ""
+    print_warning "$TARGET_REPO_NAME already exists"
     prompt "Do you want to overwrite it? <m>[y/N]:<w> "
     case "$input" in
         [yY][eE][sS]|[yY])
