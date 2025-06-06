@@ -5,7 +5,7 @@ printf "\n$(tput setaf 5)Sara's Dotfiles\n"
 print () {
     printf "\n$(tput setaf 7)"
     for fragment in "$@"; do
-        printf "$fragment"
+        printf "%s" "$fragment"
     done
 }
 warn () {
