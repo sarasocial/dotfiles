@@ -9,10 +9,10 @@ print () {
     done
 }
 warn () {
-    printf "\n$(tput setaf 3)Warning: $1"
+    printf "%s" "\n$(tput setaf 3)Warning: $1"
 }
 error () {
-    printf "\n$(tput setaf 1)Error: $1"
+    printf "%s" "\n$(tput setaf 1)Error: $1"
     exit 1
 }
 
