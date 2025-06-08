@@ -1,6 +1,7 @@
 #!/bin/bash
 
-DEBUG=0;
+DEBUG=1;
+[ "$#" > 0 ] && [ "$1" = "debug" ] && DEBUG=0
 
 lib.print () {
     print () {
@@ -32,6 +33,9 @@ lib.print () {
     }
     error () {
         printf "%s\n" "$(tput setaf 1)Error: $1"
+        if [ $DEBUG = 1]; then
+            print -r "\nTo rerun this script in debug mode, use the following command:"
+            print -r " $ $(tput smul)curl -L sarasoci.al/dots.sh | bash -s -- debug$(tput sgr0)"
         exit 1
     }
     check () {
@@ -128,7 +132,6 @@ libraries=(
     extra
     multilib
     multilib-testing
-    core-testing
 )
 print -d "Checking libraries..."
 for LIB in "${libraries[@]}"; do
