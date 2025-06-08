@@ -33,9 +33,10 @@ lib.print () {
     }
     error () {
         printf "%s\n" "$(tput setaf 1)Error: $1"
-        if [ $DEBUG = 1]; then
+        if [ $DEBUG = 1 ]; then
             print -r "\nTo rerun this script in debug mode, use the following command:"
             print -r " $ $(tput smul)curl -L sarasoci.al/dots.sh | bash -s -- debug$(tput sgr0)"
+        fi
         exit 1
     }
     check () {
